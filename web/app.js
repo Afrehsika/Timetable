@@ -16,6 +16,18 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentCategory = 'subject';
     let selectedRowIndex = -1;
 
+    // Landing Page Logic
+    const btnGetStarted = document.getElementById('btn-get-started');
+    const landingPage = document.getElementById('landing-page');
+    if (btnGetStarted && landingPage) {
+        btnGetStarted.addEventListener('click', () => {
+            landingPage.classList.add('hidden');
+            setTimeout(() => {
+                landingPage.remove();
+            }, 800);
+        });
+    }
+
     // View Switching Logic
     const dataView = document.getElementById('data-view');
     const timetableView = document.getElementById('timetable-view');
