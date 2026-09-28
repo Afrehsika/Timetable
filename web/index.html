@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>School Timetable Studio</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Timetable Studio</h1>
+        <div class="controls">
+            <button id="nav-data" class="active">1. Input Data</button>
+            <button id="nav-grid">2. View Timetable</button>
+        </div>
+    </header>
+    
+    <main id="app-content">
+        <!-- 1. DATA ENTRY VIEW (aSc Style Management Table) -->
+        <div id="data-view" class="view-section">
+            <div class="management-layout">
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <div class="sidebar-item active" data-target="subject">
+                        Subjects
+                    </div>
+                    <div class="sidebar-item" data-target="teacher">
+                        Teachers
+                    </div>
+                    <div class="sidebar-item" data-target="class">
+                        Classes
+                    </div>
+                    <div class="sidebar-item" data-target="room">
+                        Rooms
+                    </div>
+                    <div class="sidebar-item" data-target="lesson">
+                        Lessons
+                    </div>
+                    <div class="sidebar-item" data-target="bell">
+                        Bells & Times
+                    </div>
+                </div>
+
+                <!-- Main Table Area -->
+                <div class="table-area">
+                    <table class="data-table" id="data-table">
+                        <thead>
+                            <tr id="table-head">
+                                <!-- Dynamic headers injected by JS -->
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Dynamic rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Right Action Panel -->
+                <div class="action-panel">
+                    <button id="btn-new" class="action-btn">
+                        <span class="icon-new">+</span> New
+                    </button>
+                    <button id="btn-edit" class="action-btn disabled">Edit</button>
+                    <button id="btn-delete" class="action-btn disabled">Delete</button>
+                    
+                    <hr style="width: 100%; border: 0; border-top: 1px solid #cbd5e1; margin: 15px 0;">
+                    
+                    <button id="btn-generate-api" class="primary-btn">Generate Timetable</button>
+                    <div id="generate-status" style="margin-top: 10px; color: var(--color-eng); font-weight: bold; font-size: 12px; text-align: center;"></div>
+                    
+                    <button id="btn-load-sample" class="action-btn" style="margin-top: auto;">Load Sample Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. TIMETABLE VIEW -->
+        <div id="timetable-view" class="view-section" style="display: none;">
+            <div style="margin-bottom: 20px;">
+                <button id="btn-master" class="active" style="background: transparent; color: white; border: 1px solid white; padding: 8px 16px; border-radius: 6px;">Master Grid</button>
+                <button id="btn-class" style="background: transparent; color: white; border: 1px solid white; padding: 8px 16px; border-radius: 6px; margin-left: 10px;">Print Preview</button>
+            </div>
+            <div id="grid-container-area"></div>
+        </div>
+    </main>
+
+    <!-- Modal for adding new item -->
+    <div id="new-item-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title" style="margin-top: 0;">New Item</h3>
+            <div id="modal-form"></div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button id="modal-cancel" style="padding: 8px 15px; margin-right: 10px; background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; color: black;">Cancel</button>
+                <button id="modal-save" style="padding: 8px 15px; background: var(--color-phys); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
