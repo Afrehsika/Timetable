@@ -448,21 +448,96 @@ document.addEventListener("DOMContentLoaded", () => {
             generatedScheduleMeta.days.forEach(day => {
                 generatedScheduleMeta.periods.forEach(period => {
                     const cell = document.createElement("div");
-                    cell.className = "grid-cell";
+                    cell.className = "grid-cell dropzone";
+                    cell.dataset.classId = classId;
+                    cell.dataset.day = day;
+                    cell.dataset.period = period;
                     
                     const entry = generatedScheduleData.find(e => e.class_id === classId && e.day === day && e.period === period);
                     
                     if (entry) {
                         const card = document.createElement("div");
                         card.className = "subject-card";
+                        card.draggable = true;
+                        card.dataset.entry = JSON.stringify(entry);
                         card.style.backgroundColor = getSubjectColor(entry.subject);
+                        card.style.cursor = "grab";
                         card.innerHTML = `
                             <div class="subject-name">${entry.subject}</div>
                             <div class="teacher-name">${entry.teacher}</div>
                             <div class="room-name">${entry.room}</div>
                         `;
+                        
+                        card.addEventListener('dragstart', (e) => {
+                            e.dataTransfer.setData('application/json', card.dataset.entry);
+                            setTimeout(() => card.style.opacity = '0.5', 0);
+                            
+                            // Highlight zones
+                            document.querySelectorAll('.grid-cell.dropzone').forEach(dropCell => {
+                                const dClass = dropCell.dataset.classId;
+                                const dDay = dropCell.dataset.day;
+                                const dPeriod = parseInt(dropCell.dataset.period, 10);
+                                
+                                if (dClass !== classId) {
+                                    dropCell.style.opacity = '0.2'; // Different class row
+                                    return;
+                                }
+                                
+                                // Check if teacher is busy in this day/period in ANY class
+                                const isTeacherBusy = generatedScheduleData.some(sch => 
+                                    sch.teacher === entry.teacher && sch.day === dDay && sch.period === dPeriod && !(sch.class_id === classId && sch.day === entry.day && sch.period === entry.period)
+                                );
+                                
+                                // Check if cell already has a card (for simplicity, only allow dropping on empty cells in this class)
+                                const isCellOccupied = generatedScheduleData.some(sch => 
+                                    sch.class_id === classId && sch.day === dDay && sch.period === dPeriod && !(sch.day === entry.day && sch.period === entry.period)
+                                );
+                                
+                                if (isTeacherBusy || isCellOccupied) {
+                                    dropCell.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'; // Red
+                                    dropCell.dataset.droppable = 'false';
+                                } else {
+                                    dropCell.style.backgroundColor = 'rgba(34, 197, 94, 0.2)'; // Green
+                                    dropCell.dataset.droppable = 'true';
+                                }
+                            });
+                        });
+                        
+                        card.addEventListener('dragend', (e) => {
+                            card.style.opacity = '1';
+                            document.querySelectorAll('.grid-cell.dropzone').forEach(dropCell => {
+                                dropCell.style.opacity = '1';
+                                dropCell.style.backgroundColor = '';
+                                dropCell.dataset.droppable = '';
+                            });
+                        });
+                        
                         cell.appendChild(card);
                     }
+                    
+                    cell.addEventListener('dragover', (e) => {
+                        if (cell.dataset.droppable === 'true') {
+                            e.preventDefault(); // Allow drop
+                        }
+                    });
+                    
+                    cell.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        if (cell.dataset.droppable === 'true') {
+                            const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                            // Update data
+                            const targetEntry = generatedScheduleData.find(sch => 
+                                sch.class_id === data.class_id && sch.day === data.day && sch.period === data.period
+                            );
+                            if (targetEntry) {
+                                targetEntry.day = cell.dataset.day;
+                                // period is an integer in the data, dataset stores it as string
+                                targetEntry.period = parseInt(cell.dataset.period, 10);
+                                renderMasterGrid(); // Re-render
+                            }
+                        }
+                    });
+
                     row.appendChild(cell);
                 });
             });
