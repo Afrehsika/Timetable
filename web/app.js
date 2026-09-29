@@ -690,6 +690,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 );
 
                                 let teacherConflict = false;
+                                let roomConflict = false;
                                 let mergeRoom = "";
 
                                 if (teacherSchedulesAtTarget.length > 0) {
@@ -714,6 +715,31 @@ document.addEventListener("DOMContentLoaded", () => {
                                     if (currentStudents > roomCapacity) {
                                         teacherConflict = true; // Capacity exceeded, cannot merge
                                     }
+                                } else {
+                                    // Not merging teachers. Find candidate room and prevent room conflicts.
+                                    let tryAdjacent = false;
+                                    const adjacentSchedules = generatedScheduleData.filter(sch => 
+                                        sch.class_id === classId && sch.day === dDay && Math.abs(sch.period - dPeriod) === 1 && sch.subject === entry.subject && !(sch.day === entry.day && sch.period === entry.period)
+                                    );
+                                    
+                                    if (adjacentSchedules.length > 0) {
+                                        tryAdjacent = true;
+                                    }
+
+                                    const checkRoom = (roomName) => {
+                                        const occ = generatedScheduleData.filter(sch => 
+                                            sch.day === dDay && sch.period === dPeriod && sch.room === roomName && !(sch.class_id === classId && sch.day === entry.day && sch.period === entry.period)
+                                        );
+                                        return occ.length === 0;
+                                    };
+
+                                    if (tryAdjacent && checkRoom(adjacentSchedules[0].room)) {
+                                        mergeRoom = adjacentSchedules[0].room; // Sync room!
+                                    } else if (checkRoom(entry.room)) {
+                                        mergeRoom = entry.room; // Use original room
+                                    } else {
+                                        roomConflict = true; // No room available!
+                                    }
                                 }
                                 
                                 // Check if cell already has a card
@@ -721,7 +747,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     sch.class_id === classId && sch.day === dDay && sch.period === dPeriod && !(sch.day === entry.day && sch.period === entry.period)
                                 );
                                 
-                                if (teacherConflict || isCellOccupied) {
+                                if (teacherConflict || roomConflict || isCellOccupied) {
                                     dropCell.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'; // Red
                                     dropCell.dataset.droppable = 'false';
                                 } else {
@@ -851,27 +877,54 @@ document.addEventListener("DOMContentLoaded", () => {
                 const shortDay = dayMap[day] || day.substring(0, 2);
                 html += `<td style="border: 2px solid black; text-align: center; font-size: 20px;">${shortDay}</td>`;
                 
+                let cells = [];
                 generatedScheduleMeta.periods.forEach(period => {
-                    let entry;
                     if (type === 'class') {
-                        entry = generatedScheduleData.find(e => e.class_id === targetName && e.day === day && e.period === period);
+                        const entry = generatedScheduleData.find(e => e.class_id === targetName && e.day === day && e.period === period);
+                        cells.push(entry || null);
                     } else {
-                        entry = generatedScheduleData.find(e => e.teacher === targetName && e.day === day && e.period === period);
+                        const entries = generatedScheduleData.filter(e => e.teacher === targetName && e.day === day && e.period === period);
+                        if (entries.length > 0) {
+                            const combinedEntry = { ...entries[0] };
+                            combinedEntry.class_id = entries.map(e => e.class_id).join(", ");
+                            cells.push(combinedEntry);
+                        } else {
+                            cells.push(null);
+                        }
                     }
-                    
+                });
+
+                for (let i = 0; i < cells.length; i++) {
+                    let entry = cells[i];
                     if (entry) {
-                        const bottomRight = type === 'class' ? entry.teacher : entry.class_id;
+                        let colspan = 1;
+                        let uniqueRooms = new Set([entry.room]);
+                        let uniqueBottomRight = new Set([type === 'class' ? entry.teacher : entry.class_id]);
+
+                        while (i + 1 < cells.length && cells[i + 1] && 
+                               cells[i + 1].subject === entry.subject && 
+                               cells[i + 1].teacher === entry.teacher && 
+                               cells[i + 1].class_id === entry.class_id) {
+                            colspan++;
+                            uniqueRooms.add(cells[i + 1].room);
+                            uniqueBottomRight.add(type === 'class' ? cells[i + 1].teacher : cells[i + 1].class_id);
+                            i++;
+                        }
+                        
+                        const roomStr = Array.from(uniqueRooms).join(" / ");
+                        const bottomRightStr = Array.from(uniqueBottomRight).join(" / ");
+                        
                         html += `
-                            <td style="border: 2px solid black; padding: 8px; text-align: center; vertical-align: middle; height: 80px;">
+                            <td ${colspan > 1 ? `colspan="${colspan}"` : ''} style="border: 2px solid black; padding: 8px; text-align: center; vertical-align: middle; height: 80px;">
                                 <div style="font-size: 14px; font-weight: normal; margin-bottom: 4px;">${entry.subject}</div>
-                                <div style="font-size: 10px; color: #333; margin-top: 4px;">${entry.room}</div>
-                                <div style="font-size: 10px; color: #333;">${bottomRight}</div>
+                                <div style="font-size: 10px; color: #333; margin-top: 4px;">${roomStr}</div>
+                                <div style="font-size: 10px; color: #333;">${bottomRightStr}</div>
                             </td>
                         `;
                     } else {
                         html += `<td style="border: 2px solid black;"></td>`;
                     }
-                });
+                }
                 html += `</tr>`;
             });
 
