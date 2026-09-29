@@ -9,6 +9,9 @@ class TeacherConflictConstraint(Constraint):
         for entry in timetable.entries:
             if entry['slot'].day == slot.day and entry['slot'].period == slot.period:
                 if entry['lesson'].teacher == lesson.teacher:
+                    # Allow if it's the same room (merging classes)
+                    if room is not None and entry['room'] == room:
+                        continue
                     return False
         return True
 
@@ -31,6 +34,9 @@ class RoomConflictConstraint(Constraint):
         for entry in timetable.entries:
             if entry['slot'].day == slot.day and entry['slot'].period == slot.period:
                 if entry['room'] == room:
+                    # Allow if it's the same teacher (merging classes)
+                    if entry['lesson'].teacher == lesson.teacher:
+                        continue
                     return False
         return True
 
@@ -45,7 +51,12 @@ class RoomCapacityConstraint(Constraint):
     def check(self, timetable, lesson, slot, room=None):
         if room is None:
             return True
-        return lesson.student_class.size <= room.capacity
+        current_occupancy = 0
+        for entry in timetable.entries:
+            if entry['slot'].day == slot.day and entry['slot'].period == slot.period:
+                if entry['room'] == room:
+                    current_occupancy += entry['lesson'].student_class.size
+        return (current_occupancy + lesson.student_class.size) <= room.capacity
 
 class DailySubjectLimitConstraint(Constraint):
     def __init__(self, max_per_day=2):

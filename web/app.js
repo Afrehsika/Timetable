@@ -142,81 +142,124 @@ document.addEventListener("DOMContentLoaded", () => {
         updateButtonStates();
     };
 
-    // Modal Handling for New Items
+    // Modal Handling for New/Edit Items
     const modal = document.getElementById('new-item-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalForm = document.getElementById('modal-form');
-    
-    document.getElementById('btn-new').addEventListener('click', () => {
+    let editingIndex = -1;
+
+    const openFormModal = (isEdit = false) => {
+        editingIndex = isEdit ? selectedRowIndex : -1;
         modal.style.display = 'flex';
+        
+        let item = null;
+        if (isEdit) {
+            if (currentCategory === 'subject') item = appData.subjects[selectedRowIndex];
+            else if (currentCategory === 'teacher') item = appData.teachers[selectedRowIndex];
+            else if (currentCategory === 'class') item = appData.classes[selectedRowIndex];
+            else if (currentCategory === 'room') item = appData.rooms[selectedRowIndex];
+            else if (currentCategory === 'lesson') item = appData.lessons[selectedRowIndex];
+            else if (currentCategory === 'bell') item = appData.bells[selectedRowIndex];
+        }
+
         let html = '';
         if (currentCategory === 'subject') {
-            modalTitle.innerText = "New Subject";
+            modalTitle.innerText = isEdit ? "Edit Subject" : "New Subject";
             html = `
-                <input type="text" id="inp-name" placeholder="Name (e.g. Mathematics)" autocomplete="off">
-                <input type="text" id="inp-id" placeholder="Abbreviation (e.g. MATH)" autocomplete="off">
+                <input type="text" id="inp-name" placeholder="Name (e.g. Mathematics)" autocomplete="off" value="${item ? item.name : ''}">
+                <input type="text" id="inp-id" placeholder="Abbreviation (e.g. MATH)" autocomplete="off" value="${item ? item.id : ''}">
             `;
         } else if (currentCategory === 'teacher') {
-            modalTitle.innerText = "New Teacher";
+            modalTitle.innerText = isEdit ? "Edit Teacher" : "New Teacher";
             html = `
-                <input type="text" id="inp-name" placeholder="Name (e.g. Mr. Smith)" autocomplete="off">
-                <input type="text" id="inp-id" placeholder="Abbreviation (e.g. T01)" autocomplete="off">
+                <input type="text" id="inp-name" placeholder="Name (e.g. Mr. Smith)" autocomplete="off" value="${item ? item.name : ''}">
+                <input type="text" id="inp-id" placeholder="Abbreviation (e.g. T01)" autocomplete="off" value="${item ? item.id : ''}">
             `;
         } else if (currentCategory === 'class') {
-            modalTitle.innerText = "New Class";
+            modalTitle.innerText = isEdit ? "Edit Class" : "New Class";
             html = `
-                <input type="text" id="inp-name" placeholder="Name (e.g. 1A1)" autocomplete="off">
-                <input type="text" id="inp-id" placeholder="ID (e.g. 1A1)" autocomplete="off">
-                <input type="number" id="inp-size" placeholder="Student Count (e.g. 25)" autocomplete="off">
+                <input type="text" id="inp-name" placeholder="Name (e.g. 1A1)" autocomplete="off" value="${item ? item.name : ''}">
+                <input type="text" id="inp-id" placeholder="ID (e.g. 1A1)" autocomplete="off" value="${item ? item.id : ''}">
+                <input type="number" id="inp-size" placeholder="Student Count (e.g. 25)" autocomplete="off" value="${item ? item.size : ''}">
             `;
         } else if (currentCategory === 'room') {
-            modalTitle.innerText = "New Room";
+            modalTitle.innerText = isEdit ? "Edit Room" : "New Room";
             html = `
-                <input type="text" id="inp-name" placeholder="Name (e.g. Room 101)" autocomplete="off">
-                <input type="number" id="inp-cap" placeholder="Capacity (e.g. 30)" autocomplete="off">
+                <input type="text" id="inp-name" placeholder="Name (e.g. Room 101)" autocomplete="off" value="${item ? item.name : ''}">
+                <input type="number" id="inp-cap" placeholder="Capacity (e.g. 30)" autocomplete="off" value="${item ? item.capacity : ''}">
             `;
         } else if (currentCategory === 'lesson') {
-            modalTitle.innerText = "New Lesson";
+            modalTitle.innerText = isEdit ? "Edit Lesson" : "New Lesson";
             html = `
-                <select id="les-subj"><option value="">Select Subject...</option>${appData.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}</select>
-                <select id="les-teach"><option value="">Select Teacher...</option>${appData.teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}</select>
-                <select id="les-cls"><option value="">Select Class...</option>${appData.classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
-                <input type="number" id="les-periods" placeholder="Periods Per Week (e.g. 4)">
+                <select id="les-subj"><option value="">Select Subject...</option>${appData.subjects.map(s => `<option value="${s.id}" ${item && item.subject_id === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}</select>
+                <select id="les-teach"><option value="">Select Teacher...</option>${appData.teachers.map(t => `<option value="${t.id}" ${item && item.teacher_id === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}</select>
+                <select id="les-cls"><option value="">Select Class...</option>${appData.classes.map(c => `<option value="${c.id}" ${item && item.class_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}</select>
+                <input type="number" id="les-periods" placeholder="Periods Per Week (e.g. 4)" value="${item ? item.periods : ''}">
             `;
         } else if (currentCategory === 'bell') {
-            modalTitle.innerText = "New Bell / Time Slot";
+            modalTitle.innerText = isEdit ? "Edit Bell / Time Slot" : "New Bell / Time Slot";
             html = `
-                <input type="text" id="inp-period" placeholder="Period Label (e.g. 1 or Break)">
-                <input type="text" id="inp-time" placeholder="Time Range (e.g. 7:30 - 8:30)">
+                <input type="text" id="inp-period" placeholder="Period Label (e.g. 1 or Break)" value="${item ? item.period : ''}">
+                <input type="text" id="inp-time" placeholder="Time Range (e.g. 7:30 - 8:30)" value="${item ? item.time : ''}">
             `;
         }
         modalForm.innerHTML = html;
-    });
+    };
+
+    document.getElementById('btn-new').addEventListener('click', () => openFormModal(false));
+
+    if (btnEdit) {
+        btnEdit.addEventListener('click', () => {
+            if (selectedRowIndex >= 0 && !btnEdit.classList.contains('disabled')) {
+                openFormModal(true);
+            }
+        });
+    }
 
     document.getElementById('modal-cancel').addEventListener('click', () => {
         modal.style.display = 'none';
+        editingIndex = -1;
     });
 
     document.getElementById('modal-save').addEventListener('click', () => {
+        let newItem = null;
         if (currentCategory === 'subject') {
-            appData.subjects.push({ name: document.getElementById('inp-name').value, id: document.getElementById('inp-id').value });
+            newItem = { name: document.getElementById('inp-name').value, id: document.getElementById('inp-id').value };
         } else if (currentCategory === 'teacher') {
-            appData.teachers.push({ name: document.getElementById('inp-name').value, id: document.getElementById('inp-id').value });
+            newItem = { name: document.getElementById('inp-name').value, id: document.getElementById('inp-id').value };
         } else if (currentCategory === 'class') {
-            appData.classes.push({ name: document.getElementById('inp-name').value, id: document.getElementById('inp-id').value, size: parseInt(document.getElementById('inp-size').value) });
+            newItem = { name: document.getElementById('inp-name').value, id: document.getElementById('inp-id').value, size: parseInt(document.getElementById('inp-size').value) };
         } else if (currentCategory === 'room') {
-            appData.rooms.push({ name: document.getElementById('inp-name').value, capacity: parseInt(document.getElementById('inp-cap').value) });
+            newItem = { name: document.getElementById('inp-name').value, capacity: parseInt(document.getElementById('inp-cap').value) };
         } else if (currentCategory === 'lesson') {
-            appData.lessons.push({
+            newItem = {
                 subject_id: document.getElementById('les-subj').value,
                 teacher_id: document.getElementById('les-teach').value,
                 class_id: document.getElementById('les-cls').value,
                 periods: parseInt(document.getElementById('les-periods').value)
-            });
+            };
         } else if (currentCategory === 'bell') {
-            appData.bells.push({ period: document.getElementById('inp-period').value, time: document.getElementById('inp-time').value });
+            newItem = { period: document.getElementById('inp-period').value, time: document.getElementById('inp-time').value };
         }
+
+        if (editingIndex >= 0) {
+            if (currentCategory === 'subject') appData.subjects[editingIndex] = newItem;
+            else if (currentCategory === 'teacher') appData.teachers[editingIndex] = newItem;
+            else if (currentCategory === 'class') appData.classes[editingIndex] = newItem;
+            else if (currentCategory === 'room') appData.rooms[editingIndex] = newItem;
+            else if (currentCategory === 'lesson') appData.lessons[editingIndex] = newItem;
+            else if (currentCategory === 'bell') appData.bells[editingIndex] = newItem;
+        } else {
+            if (currentCategory === 'subject') appData.subjects.push(newItem);
+            else if (currentCategory === 'teacher') appData.teachers.push(newItem);
+            else if (currentCategory === 'class') appData.classes.push(newItem);
+            else if (currentCategory === 'room') appData.rooms.push(newItem);
+            else if (currentCategory === 'lesson') appData.lessons.push(newItem);
+            else if (currentCategory === 'bell') appData.bells.push(newItem);
+        }
+
         modal.style.display = 'none';
+        editingIndex = -1;
         renderTable();
     });
 
@@ -286,6 +329,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ];
 
         appData.rooms = [
+            {name: "Main Auditorium", capacity: 100}, // Added large room for merging
             {name: "Lecture Hall 1", capacity: 50}, {name: "Lecture Hall 2", capacity: 50},
             {name: "Lecture Hall 3", capacity: 50}, {name: "Lecture Hall 4", capacity: 50},
             {name: "Lecture Hall 5", capacity: 50}, {name: "Lecture Hall 6", capacity: 50},
@@ -395,7 +439,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initialize UI
     renderTable();
 
-    // -- Grid Rendering Code (Unchanged from before) --
     const getSubjectColor = (subject) => {
         if (!subject) return "var(--color-default)";
         if (subject.toLowerCase().includes("math")) return "var(--color-math)";
@@ -403,6 +446,142 @@ document.addEventListener("DOMContentLoaded", () => {
         if (subject.toLowerCase().includes("chem")) return "var(--color-chem)";
         if (subject.toLowerCase().includes("eng")) return "var(--color-eng)";
         return "var(--color-default)";
+    };
+
+    // Modal for changing scheduled class details
+    const changeRoomModal = document.getElementById('change-room-modal');
+    const editSchSubject = document.getElementById('edit-sch-subject');
+    const editSchTeacher = document.getElementById('edit-sch-teacher');
+    const roomSelect = document.getElementById('room-select');
+    const changeRoomError = document.getElementById('change-room-error');
+    let currentEntryForRoomChange = null;
+
+    const updateTeacherDropdown = (subjectName, selectedTeacherName, isInit = false) => {
+        if (!editSchTeacher) return;
+        
+        const subjectObj = appData.subjects.find(s => s.name === subjectName);
+        let validTeachers = appData.teachers;
+        
+        if (subjectObj) {
+            const teacherIds = [...new Set(appData.lessons
+                .filter(l => l.subject_id === subjectObj.id)
+                .map(l => l.teacher_id))];
+                
+            if (teacherIds.length > 0) {
+                validTeachers = appData.teachers.filter(t => teacherIds.includes(t.id));
+            }
+        }
+        
+        // Only force-keep the currently selected teacher if we are initializing the modal
+        if (isInit && selectedTeacherName && !validTeachers.some(t => t.name === selectedTeacherName)) {
+            const currentTeacherObj = appData.teachers.find(t => t.name === selectedTeacherName);
+            if (currentTeacherObj) validTeachers.push(currentTeacherObj);
+        }
+        
+        // If we are changing the subject and the current teacher isn't valid, reset it
+        if (!isInit && selectedTeacherName && !validTeachers.some(t => t.name === selectedTeacherName)) {
+            selectedTeacherName = validTeachers.length > 0 ? validTeachers[0].name : '';
+        }
+
+        editSchTeacher.innerHTML = validTeachers.map(t => `<option value="${t.name}" ${t.name === selectedTeacherName ? 'selected' : ''}>${t.name}</option>`).join('');
+    };
+
+    if (editSchSubject) {
+        editSchSubject.addEventListener('change', (e) => {
+            updateTeacherDropdown(e.target.value, editSchTeacher.value, false);
+        });
+    }
+
+    if (changeRoomModal) {
+        document.getElementById('room-modal-cancel').addEventListener('click', () => {
+            changeRoomModal.style.display = 'none';
+            changeRoomError.style.display = 'none';
+        });
+
+        document.getElementById('room-modal-save').addEventListener('click', () => {
+            const newRoomName = roomSelect.value;
+            const newSubjectName = editSchSubject.value;
+            const newTeacherName = editSchTeacher.value;
+            const entry = currentEntryForRoomChange;
+            
+            // Validation
+            let roomConflict = false;
+            let errorMessage = "";
+            
+            // 0. Teacher Validation
+            const teacherOccupants = generatedScheduleData.filter(sch => 
+                sch.day === entry.day && sch.period === entry.period && sch.teacher === newTeacherName && !(sch.class_id === entry.class_id && sch.day === entry.day && sch.period === entry.period)
+            );
+            
+            if (teacherOccupants.length > 0) {
+                // The new teacher is teaching somewhere else.
+                // Are they teaching in the newRoomName? (Merging)
+                const diffRoom = teacherOccupants.some(sch => sch.room !== newRoomName);
+                if (diffRoom) {
+                    roomConflict = true;
+                    errorMessage = `Teacher ${newTeacherName} is already teaching in another room at this time.`;
+                }
+            }
+            
+            // 1. Calculate new room capacity and occupancy
+            if (!roomConflict) {
+                const newRoomObj = appData.rooms.find(r => r.name === newRoomName);
+                if (!newRoomObj) return;
+                
+                // Check who is in that room at that time
+                const occupants = generatedScheduleData.filter(sch => 
+                    sch.day === entry.day && sch.period === entry.period && sch.room === newRoomName && !(sch.class_id === entry.class_id && sch.day === entry.day && sch.period === entry.period)
+                );
+                
+                if (occupants.length > 0) {
+                    // Room is occupied. Are they all taught by the SAME new teacher?
+                    const diffTeacher = occupants.some(sch => sch.teacher !== newTeacherName);
+                    if (diffTeacher) {
+                        roomConflict = true;
+                        errorMessage = "Room is already occupied by another teacher's class.";
+                    }
+                }
+                
+                if (!roomConflict) {
+                    // Check capacity
+                    let currentStudents = 0;
+                    occupants.forEach(sch => {
+                        const clsObj = appData.classes.find(c => c.id === sch.class_id);
+                        if (clsObj) currentStudents += clsObj.size;
+                    });
+                    
+                    const draggedClassObj = appData.classes.find(c => c.id === entry.class_id);
+                    if (draggedClassObj) currentStudents += draggedClassObj.size;
+                    
+                    if (currentStudents > newRoomObj.capacity) {
+                        roomConflict = true;
+                        errorMessage = "Room capacity (" + newRoomObj.capacity + ") exceeded. Total students: " + currentStudents;
+                    }
+                }
+            }
+            
+            if (roomConflict) {
+                changeRoomError.innerText = errorMessage;
+                changeRoomError.style.display = 'block';
+            } else {
+                // Success
+                entry.room = newRoomName;
+                entry.subject = newSubjectName;
+                entry.teacher = newTeacherName;
+                changeRoomModal.style.display = 'none';
+                changeRoomError.style.display = 'none';
+                renderMasterGrid();
+            }
+        });
+    }
+
+    const openRoomChangeModal = (entry) => {
+        currentEntryForRoomChange = entry;
+        if (editSchSubject) editSchSubject.innerHTML = appData.subjects.map(s => `<option value="${s.name}" ${s.name === entry.subject ? 'selected' : ''}>${s.name}</option>`).join('');
+        updateTeacherDropdown(entry.subject, entry.teacher, true);
+        if (roomSelect) roomSelect.innerHTML = appData.rooms.map(r => `<option value="${r.name}" ${r.name === entry.room ? 'selected' : ''}>${r.name} (Cap: ${r.capacity})</option>`).join('');
+        changeRoomError.style.display = 'none';
+        changeRoomModal.style.display = 'flex';
     };
 
     const renderMasterGrid = () => {
@@ -478,7 +657,17 @@ document.addEventListener("DOMContentLoaded", () => {
                             <div class="subject-name">${entry.subject}</div>
                             <div class="teacher-name">${entry.teacher}</div>
                             <div class="room-name">${entry.room}</div>
+                            <button class="edit-room-btn" style="position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.5); border: none; color: white; cursor: pointer; border-radius: 4px; padding: 2px 5px; font-size: 10px;">✎</button>
                         `;
+                        
+                        // Handle clicking the edit button specifically
+                        const editBtn = card.querySelector('.edit-room-btn');
+                        if (editBtn) {
+                            editBtn.addEventListener('click', (e) => {
+                                e.stopPropagation(); // prevent dragging from interfering
+                                openRoomChangeModal(entry);
+                            });
+                        }
                         
                         card.addEventListener('dragstart', (e) => {
                             e.dataTransfer.setData('application/json', card.dataset.entry);
@@ -496,21 +685,49 @@ document.addEventListener("DOMContentLoaded", () => {
                                 }
                                 
                                 // Check if teacher is busy in this day/period in ANY class
-                                const isTeacherBusy = generatedScheduleData.some(sch => 
+                                const teacherSchedulesAtTarget = generatedScheduleData.filter(sch => 
                                     sch.teacher === entry.teacher && sch.day === dDay && sch.period === dPeriod && !(sch.class_id === classId && sch.day === entry.day && sch.period === entry.period)
                                 );
+
+                                let teacherConflict = false;
+                                let mergeRoom = "";
+
+                                if (teacherSchedulesAtTarget.length > 0) {
+                                    // Teacher is already teaching. We can merge if the room capacity allows it.
+                                    mergeRoom = teacherSchedulesAtTarget[0].room;
+                                    const roomObj = appData.rooms.find(r => r.name === mergeRoom);
+                                    const roomCapacity = roomObj ? roomObj.capacity : 0;
+                                    
+                                    // Calculate total students currently in that room at that time
+                                    let currentStudents = 0;
+                                    generatedScheduleData.forEach(sch => {
+                                        if (sch.day === dDay && sch.period === dPeriod && sch.room === mergeRoom && !(sch.class_id === classId && sch.day === entry.day && sch.period === entry.period)) {
+                                            const clsObj = appData.classes.find(c => c.id === sch.class_id);
+                                            if (clsObj) currentStudents += clsObj.size;
+                                        }
+                                    });
+                                    
+                                    // Add the size of the dragged class
+                                    const draggedClassObj = appData.classes.find(c => c.id === classId);
+                                    if (draggedClassObj) currentStudents += draggedClassObj.size;
+                                    
+                                    if (currentStudents > roomCapacity) {
+                                        teacherConflict = true; // Capacity exceeded, cannot merge
+                                    }
+                                }
                                 
-                                // Check if cell already has a card (for simplicity, only allow dropping on empty cells in this class)
+                                // Check if cell already has a card
                                 const isCellOccupied = generatedScheduleData.some(sch => 
                                     sch.class_id === classId && sch.day === dDay && sch.period === dPeriod && !(sch.day === entry.day && sch.period === entry.period)
                                 );
                                 
-                                if (isTeacherBusy || isCellOccupied) {
+                                if (teacherConflict || isCellOccupied) {
                                     dropCell.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'; // Red
                                     dropCell.dataset.droppable = 'false';
                                 } else {
                                     dropCell.style.backgroundColor = 'rgba(34, 197, 94, 0.2)'; // Green
                                     dropCell.dataset.droppable = 'true';
+                                    dropCell.dataset.mergeRoom = mergeRoom;
                                 }
                             });
                         });
@@ -521,6 +738,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 dropCell.style.opacity = '1';
                                 dropCell.style.backgroundColor = '';
                                 dropCell.dataset.droppable = '';
+                                dropCell.dataset.mergeRoom = '';
                             });
                         });
                         
@@ -543,8 +761,10 @@ document.addEventListener("DOMContentLoaded", () => {
                             );
                             if (targetEntry) {
                                 targetEntry.day = cell.dataset.day;
-                                // period is an integer in the data, dataset stores it as string
                                 targetEntry.period = parseInt(cell.dataset.period, 10);
+                                if (cell.dataset.mergeRoom) {
+                                    targetEntry.room = cell.dataset.mergeRoom;
+                                }
                                 renderMasterGrid(); // Re-render
                             }
                         }

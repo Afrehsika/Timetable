@@ -57,7 +57,8 @@ class TimetableApp(App):
         class_10a = StudentClass("Class 10A", "10A", size=25)
         class_10b = StudentClass("Class 10B", "10B", size=15)
 
-        room_101 = Room("Room 101", 30)
+        # Increased capacity to 50 so it can hold both Class 10A (25) and 10B (15)
+        room_101 = Room("Room 101", 50)
         room_102 = Room("Room 102", 20)
         
         time_slots = [
