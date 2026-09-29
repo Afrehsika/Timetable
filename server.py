@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+from urllib.parse import urlparse, parse_qs
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -26,11 +27,15 @@ class TimetableHandler(SimpleHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
             try:
+                payload = json.loads(post_data.decode('utf-8'))
+                filename = payload.get('filename', 'appData')
+                data_str = json.dumps(payload.get('data', {}))
+                
                 import sqlite3
                 conn = sqlite3.connect('timetable.db')
                 c = conn.cursor()
                 c.execute('''CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT)''')
-                c.execute("INSERT OR REPLACE INTO store (key, value) VALUES ('appData', ?)", (post_data.decode('utf-8'),))
+                c.execute("INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)", (filename, data_str))
                 conn.commit()
                 conn.close()
                 self.send_response(200)
@@ -64,13 +69,37 @@ class TimetableHandler(SimpleHTTPRequestHandler):
             self.end_headers()
 
     def do_GET(self):
-        if self.path == '/api/load_data':
+        parsed_path = urlparse(self.path)
+        if parsed_path.path == '/api/list_files':
             try:
                 import sqlite3
                 conn = sqlite3.connect('timetable.db')
                 c = conn.cursor()
                 c.execute('''CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT)''')
-                c.execute("SELECT value FROM store WHERE key='appData'")
+                c.execute("SELECT key FROM store")
+                rows = c.fetchall()
+                conn.close()
+                files = [r[0] for r in rows]
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True, 'files': files}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
+                
+        elif parsed_path.path == '/api/load_data':
+            try:
+                qs = parse_qs(parsed_path.query)
+                filename = qs.get('file', ['appData'])[0]
+                
+                import sqlite3
+                conn = sqlite3.connect('timetable.db')
+                c = conn.cursor()
+                c.execute('''CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT)''')
+                c.execute("SELECT value FROM store WHERE key=?", (filename,))
                 row = c.fetchone()
                 conn.close()
                 self.send_response(200)

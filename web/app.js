@@ -996,17 +996,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnUploadExcel = document.getElementById("btn-upload-excel");
     const excelFileInput = document.getElementById("excel-file-input");
     
+    let currentProjectName = "appData";
+    
     if(btnSaveDb) btnSaveDb.addEventListener('click', async () => {
+        const filename = prompt("Enter project name to save:", currentProjectName);
+        if (!filename) return;
+        
         try {
             btnSaveDb.innerText = "Saving...";
+            const payload = {
+                filename: filename,
+                data: appData
+            };
             const res = await fetch('/api/save_data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(appData)
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (data.success) {
-                alert("Data saved to database successfully!");
+                currentProjectName = filename;
+                alert(`Project '${filename}' saved successfully!`);
             } else {
                 alert("Error saving data: " + data.error);
             }
@@ -1020,14 +1030,38 @@ document.addEventListener("DOMContentLoaded", () => {
     if(btnLoadDb) btnLoadDb.addEventListener('click', async () => {
         try {
             btnLoadDb.innerText = "Loading...";
-            const res = await fetch('/api/load_data');
+            
+            // First fetch the list of available files
+            const listRes = await fetch('/api/list_files');
+            const listData = await listRes.json();
+            if (!listData.success) {
+                alert("Could not load file list.");
+                return;
+            }
+            
+            const availableFiles = listData.files;
+            if (availableFiles.length === 0) {
+                alert("No saved projects found in the database.");
+                return;
+            }
+            
+            const filename = prompt(`Available projects:\n${availableFiles.join(', ')}\n\nEnter project name to load:`, currentProjectName);
+            if (!filename) return;
+            
+            if (!availableFiles.includes(filename)) {
+                alert(`Project '${filename}' not found.`);
+                return;
+            }
+            
+            const res = await fetch(`/api/load_data?file=${encodeURIComponent(filename)}`);
             const data = await res.json();
             if (data.subjects) { // basic validation
                 appData = data;
+                currentProjectName = filename;
                 renderTable();
-                alert("Data loaded from database!");
+                alert(`Project '${filename}' loaded successfully!`);
             } else {
-                alert("No data found in database.");
+                alert("No data found or invalid format.");
             }
         } catch (e) {
             alert("Error loading data.");
