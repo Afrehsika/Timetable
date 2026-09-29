@@ -989,4 +989,139 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('btn-master').classList.remove('active');
         renderClassPreview();
     });
+
+    // Database and Excel features
+    const btnSaveDb = document.getElementById("btn-save-db");
+    const btnLoadDb = document.getElementById("btn-load-db");
+    const btnUploadExcel = document.getElementById("btn-upload-excel");
+    const excelFileInput = document.getElementById("excel-file-input");
+    
+    if(btnSaveDb) btnSaveDb.addEventListener('click', async () => {
+        try {
+            btnSaveDb.innerText = "Saving...";
+            const res = await fetch('/api/save_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(appData)
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert("Data saved to database successfully!");
+            } else {
+                alert("Error saving data: " + data.error);
+            }
+        } catch (e) {
+            alert("Error saving data.");
+        } finally {
+            btnSaveDb.innerText = "Save to DB";
+        }
+    });
+
+    if(btnLoadDb) btnLoadDb.addEventListener('click', async () => {
+        try {
+            btnLoadDb.innerText = "Loading...";
+            const res = await fetch('/api/load_data');
+            const data = await res.json();
+            if (data.subjects) { // basic validation
+                appData = data;
+                renderTable();
+                alert("Data loaded from database!");
+            } else {
+                alert("No data found in database.");
+            }
+        } catch (e) {
+            alert("Error loading data.");
+        } finally {
+            btnLoadDb.innerText = "Load from DB";
+        }
+    });
+
+    if(btnUploadExcel) btnUploadExcel.addEventListener('click', () => {
+        excelFileInput.click();
+    });
+
+    if(excelFileInput) excelFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                // Assuming standard sheets matching the object keys
+                if(workbook.Sheets['Subjects']) appData.subjects = XLSX.utils.sheet_to_json(workbook.Sheets['Subjects']);
+                if(workbook.Sheets['Teachers']) appData.teachers = XLSX.utils.sheet_to_json(workbook.Sheets['Teachers']);
+                if(workbook.Sheets['Classes']) appData.classes = XLSX.utils.sheet_to_json(workbook.Sheets['Classes']).map(c => ({...c, size: parseInt(c.size)}));
+                if(workbook.Sheets['Rooms']) appData.rooms = XLSX.utils.sheet_to_json(workbook.Sheets['Rooms']).map(r => ({...r, capacity: parseInt(r.capacity)}));
+                if(workbook.Sheets['Lessons']) appData.lessons = XLSX.utils.sheet_to_json(workbook.Sheets['Lessons']).map(l => ({...l, periods: parseInt(l.periods)}));
+                if(workbook.Sheets['Bells']) appData.bells = XLSX.utils.sheet_to_json(workbook.Sheets['Bells']);
+                
+                renderTable();
+                alert("Excel imported successfully! Ensure your sheets are named: Subjects, Teachers, Classes, Rooms, Lessons, Bells.");
+            } catch (err) {
+                alert("Error parsing Excel file: " + err.message);
+                console.error(err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        // Reset so same file can be chosen again
+        excelFileInput.value = '';
+    });
+
+    const btnDownloadTemplate = document.getElementById("btn-download-template");
+    if(btnDownloadTemplate) btnDownloadTemplate.addEventListener('click', () => {
+        if (typeof XLSX === 'undefined') {
+            alert("Excel library not loaded. Please wait or check your internet connection.");
+            return;
+        }
+        
+        const wb = XLSX.utils.book_new();
+        
+        // Define sample data based on the schema
+        const sampleSubjects = [
+            { id: "S1", name: "Mathematics" },
+            { id: "S2", name: "English Language" },
+            { id: "S3", name: "Integrated Science" }
+        ];
+        
+        const sampleTeachers = [
+            { id: "T1", name: "Mr. Osei" },
+            { id: "T2", name: "Dr. Mensah" },
+            { id: "T3", name: "Mrs. Appiah" }
+        ];
+        
+        const sampleClasses = [
+            { id: "L100A", name: "Level 100A", size: 30 },
+            { id: "L100B", name: "Level 100B", size: 25 }
+        ];
+        
+        const sampleRooms = [
+            { name: "Lecture Hall 1", capacity: 40 },
+            { name: "Main Auditorium", capacity: 200 }
+        ];
+        
+        const sampleLessons = [
+            { subject_id: "S1", teacher_id: "T1", class_id: "L100A", periods: 4 },
+            { subject_id: "S2", teacher_id: "T2", class_id: "L100B", periods: 3 },
+            { subject_id: "S3", teacher_id: "T3", class_id: "L100A", periods: 2 }
+        ];
+        
+        const sampleBells = [
+            { period: 1, time: "7:30 - 8:30" },
+            { period: 2, time: "8:30 - 9:30" },
+            { period: 3, time: "9:30 - 10:30" }
+        ];
+        
+        // Convert to sheets
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sampleSubjects), "Subjects");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sampleTeachers), "Teachers");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sampleClasses), "Classes");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sampleRooms), "Rooms");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sampleLessons), "Lessons");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sampleBells), "Bells");
+        
+        XLSX.writeFile(wb, "Timetable_Template.xlsx");
+    });
 });

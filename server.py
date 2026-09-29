@@ -22,8 +22,27 @@ class TimetableHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=os.path.join(os.path.dirname(__file__), 'web'), **kwargs)
 
     def do_POST(self):
-        # Handle the API request to generate a timetable
-        if self.path == '/api/generate':
+        if self.path == '/api/save_data':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                import sqlite3
+                conn = sqlite3.connect('timetable.db')
+                c = conn.cursor()
+                c.execute('''CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT)''')
+                c.execute("INSERT OR REPLACE INTO store (key, value) VALUES ('appData', ?)", (post_data.decode('utf-8'),))
+                conn.commit()
+                conn.close()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
+        elif self.path == '/api/generate':
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
             
@@ -43,6 +62,31 @@ class TimetableHandler(SimpleHTTPRequestHandler):
         else:
             self.send_response(404)
             self.end_headers()
+
+    def do_GET(self):
+        if self.path == '/api/load_data':
+            try:
+                import sqlite3
+                conn = sqlite3.connect('timetable.db')
+                c = conn.cursor()
+                c.execute('''CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT)''')
+                c.execute("SELECT value FROM store WHERE key='appData'")
+                row = c.fetchone()
+                conn.close()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                if row:
+                    self.wfile.write(row[0].encode('utf-8'))
+                else:
+                    self.wfile.write(json.dumps({}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
+        else:
+            super().do_GET()
 
     def run_scheduler(self, data):
         # 1. Generate Days and Periods from User Config
